@@ -116,6 +116,7 @@ NSString *const GCDAsyncSocketQueueName = @"GCDAsyncSocket";
 NSString *const GCDAsyncSocketThreadName = @"GCDAsyncSocket-CFStream";
 
 NSString *const GCDAsyncSocketManuallyEvaluateTrust = @"GCDAsyncSocketManuallyEvaluateTrust";
+NSString *const GCDAsyncSocketSSLSessionConfig = @"GCDAsyncSocketSSLSessionConfig";
 #if TARGET_OS_IPHONE
 NSString *const GCDAsyncSocketUseCFStreamForTLS = @"GCDAsyncSocketUseCFStreamForTLS";
 #endif
@@ -6885,26 +6886,49 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 	// Configure SSLContext from given settings
 	// 
 	// Checklist:
-	//  1. kCFStreamSSLPeerName
-	//  2. kCFStreamSSLCertificates
-	//  3. GCDAsyncSocketSSLPeerID
-	//  4. GCDAsyncSocketSSLProtocolVersionMin
-	//  5. GCDAsyncSocketSSLProtocolVersionMax
-	//  6. GCDAsyncSocketSSLSessionOptionFalseStart
-	//  7. GCDAsyncSocketSSLSessionOptionSendOneByteRecord
-	//  8. GCDAsyncSocketSSLCipherSuites
-	//  9. GCDAsyncSocketSSLDiffieHellmanParameters (Mac)
+    //  1. GCDAsyncSocketSSLSessionConfig
+	//  2. kCFStreamSSLPeerName
+	//  3. kCFStreamSSLCertificates
+	//  4. GCDAsyncSocketSSLPeerID
+	//  5. GCDAsyncSocketSSLProtocolVersionMin
+	//  6. GCDAsyncSocketSSLProtocolVersionMax
+	//  7. GCDAsyncSocketSSLSessionOptionFalseStart
+	//  8. GCDAsyncSocketSSLSessionOptionSendOneByteRecord
+	//  9. GCDAsyncSocketSSLCipherSuites
+	//  10. GCDAsyncSocketSSLDiffieHellmanParameters (Mac)
 	//
 	// Deprecated (throw error):
-	// 10. kCFStreamSSLAllowsAnyRoot
-	// 11. kCFStreamSSLAllowsExpiredRoots
-	// 12. kCFStreamSSLAllowsExpiredCertificates
-	// 13. kCFStreamSSLValidatesCertificateChain
-	// 14. kCFStreamSSLLevel
+	// 11. kCFStreamSSLAllowsAnyRoot
+	// 12. kCFStreamSSLAllowsExpiredRoots
+	// 13. kCFStreamSSLAllowsExpiredCertificates
+	// 14. kCFStreamSSLValidatesCertificateChain
+	// 15. kCFStreamSSLLevel
 	
 	id value;
+    
+    //  1. GCDAsyncSocketSSLSessionConfig
+
+    value = [tlsSettings objectForKey:GCDAsyncSocketSSLSessionConfig];
+    if ([value isKindOfClass:[NSString class]])
+    {
+        NSString *sessionConfig = (NSString *)value;
+        
+        status = SSLSetSessionConfig(sslContext, (__bridge CFStringRef)sessionConfig);
+        if (status != noErr)
+        {
+            [self closeWithError:[self otherError:@"Error in GCDAsyncSocketSSLSessionConfig"]];
+            return;
+        }
+    }
+    else if (value)
+    {
+        NSAssert(NO, @"Invalid value for GCDAsyncSocketSSLSessionConfig. Value must be of type NSString.");
+        
+        [self closeWithError:[self otherError:@"Invalid value for GCDAsyncSocketSSLSessionConfig."]];
+        return;
+    }
 	
-	// 1. kCFStreamSSLPeerName
+	// 2. kCFStreamSSLPeerName
 	
 	value = [tlsSettings objectForKey:(__bridge NSString *)kCFStreamSSLPeerName];
 	if ([value isKindOfClass:[NSString class]])
@@ -6929,7 +6953,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 2. kCFStreamSSLCertificates
+	// 3. kCFStreamSSLCertificates
 	
 	value = [tlsSettings objectForKey:(__bridge NSString *)kCFStreamSSLCertificates];
 	if ([value isKindOfClass:[NSArray class]])
@@ -6951,7 +6975,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 3. GCDAsyncSocketSSLPeerID
+	// 4. GCDAsyncSocketSSLPeerID
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLPeerID];
 	if ([value isKindOfClass:[NSData class]])
@@ -6975,7 +6999,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 4. GCDAsyncSocketSSLProtocolVersionMin
+	// 5. GCDAsyncSocketSSLProtocolVersionMin
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLProtocolVersionMin];
 	if ([value isKindOfClass:[NSNumber class]])
@@ -6999,7 +7023,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 5. GCDAsyncSocketSSLProtocolVersionMax
+	// 6. GCDAsyncSocketSSLProtocolVersionMax
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLProtocolVersionMax];
 	if ([value isKindOfClass:[NSNumber class]])
@@ -7023,7 +7047,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 6. GCDAsyncSocketSSLSessionOptionFalseStart
+	// 7. GCDAsyncSocketSSLSessionOptionFalseStart
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLSessionOptionFalseStart];
 	if ([value isKindOfClass:[NSNumber class]])
@@ -7043,7 +7067,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 7. GCDAsyncSocketSSLSessionOptionSendOneByteRecord
+	// 8. GCDAsyncSocketSSLSessionOptionSendOneByteRecord
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLSessionOptionSendOneByteRecord];
 	if ([value isKindOfClass:[NSNumber class]])
@@ -7065,7 +7089,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 8. GCDAsyncSocketSSLCipherSuites
+	// 9. GCDAsyncSocketSSLCipherSuites
 	
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLCipherSuites];
 	if ([value isKindOfClass:[NSArray class]])
@@ -7096,7 +7120,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 9. GCDAsyncSocketSSLDiffieHellmanParameters
+	// 10. GCDAsyncSocketSSLDiffieHellmanParameters
 	
 	#if !TARGET_OS_IPHONE
 	value = [tlsSettings objectForKey:GCDAsyncSocketSSLDiffieHellmanParameters];
@@ -7122,7 +7146,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 	
 	// DEPRECATED checks
 	
-	// 10. kCFStreamSSLAllowsAnyRoot
+	// 11. kCFStreamSSLAllowsAnyRoot
 	
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -7137,7 +7161,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 11. kCFStreamSSLAllowsExpiredRoots
+	// 12. kCFStreamSSLAllowsExpiredRoots
 	
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -7152,7 +7176,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 12. kCFStreamSSLValidatesCertificateChain
+	// 13. kCFStreamSSLValidatesCertificateChain
 	
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -7167,7 +7191,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 13. kCFStreamSSLAllowsExpiredCertificates
+	// 14. kCFStreamSSLAllowsExpiredCertificates
 	
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -7182,7 +7206,7 @@ static OSStatus SSLWriteFunction(SSLConnectionRef connection, const void *data, 
 		return;
 	}
 	
-	// 14. kCFStreamSSLLevel
+	// 15. kCFStreamSSLLevel
 	
 	#pragma clang diagnostic push
 	#pragma clang diagnostic ignored "-Wdeprecated-declarations"
